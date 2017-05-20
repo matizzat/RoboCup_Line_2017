@@ -1,0 +1,81 @@
+//izq = izquierdo
+//der = derecho
+//del = delantero
+//tras = trasero
+
+//N_*** = valor de negro
+
+#include "mbed.h"
+
+AnalogIn s_izq(A0);
+AnalogIn s_der(A1);
+AnalogIn s_e_izq(A2);
+AnalogIn s_e_der(A3);
+AnalogIn s_del(A4);
+AnalogIn s_tras(A5);
+
+#define motores(a,b) motor_izq.setSpeed(a);motor_der.setSpeed(b)
+
+#define N_IZQ 250
+#define N_DER 250
+
+#define MIN_IZQ 150
+#define MIN_DER 150
+#define MIN_TRAS 150
+#define MIN_DEL 150
+
+#define DEL_INTERSEC_1 200
+#define DEL_INTERSEC_2 300
+
+#define seguidor 1
+
+#define vel_giro_menor -50
+#define vel_giro_mayor 50
+#define vel_adelante 40
+
+#define vel_giro_menor_intersec -50
+#define vel_giro_mayor_intersec 60
+
+int estado = seguidor;
+
+void interseccion()
+{
+    int direccion = 1;
+    if(direccion == 0) {
+        //motores(40,40);
+        while(s_izq < N_IZQ+10 || s_der < N_DER+10);
+    } else if(direccion == 1) {
+        //motores(40,40);
+        while(s_izq < N_IZQ+10 || s_der < N_DER+10);
+        //motores(vel_giro_menor_intersec,vel_giro_mayor_intersec);
+        while(s_del < DEL_INTERSEC_1);
+        while(s_del > DEL_INTERSEC_2);
+    } else if(direccion == 2) {
+        //motores(40,40);
+        while(s_izq < N_IZQ+10 || s_der < N_DER+10);
+        //motores(vel_giro_mayor_intersec,vel_giro_menor_intersec);
+        while(s_del < DEL_INTERSEC_1);
+        while(s_del > DEL_INTERSEC_2);
+    } else if(direccion == 3) {
+        //pegarse la vuelta
+    }
+}
+
+int main()
+{
+    if(estado == seguidor) {
+        if((s_izq < MIN_IZQ && s_der < MIN_DER && s_tras < MIN_TRAS) || (s_izq < MIN_IZQ && s_del < MIN_DEL && s_tras < MIN_TRAS) || (s_der < MIN_DER && s_del < MIN_DEL && s_tras < MIN_TRAS)) {
+            interseccion();
+        }
+        if(s_izq < N_IZQ || s_der < N_DER) {
+            if(s_izq < N_IZQ) {
+                //motores(vel_giro_menor,vel_giro_mayor);
+            }
+            if(s_der < N_DER) {
+                //motores(vel_giro_mayor,vel_giro_menor);
+            }
+        } else {
+            //motores(vel_adelante,vel_adelante);
+        }
+    }
+}
