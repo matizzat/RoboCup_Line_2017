@@ -32,10 +32,11 @@ void imp(){
 int main()
 {
 	pc.baud(115200);
-	//pc.printf("a");
-	t.attach(&imp,0.6f);
+
+	//t.attach(&imp,0.6f);
 	mpu.setAlpha(0);
 	while(1){
+
 	wait(0.1);
 
 	    mpu.getOffset(accOffset, gyroOffset,1.0);
@@ -44,10 +45,14 @@ int main()
       mpu.getGyro(gry);
       mpu.getAcceleroAngle(angle);
 
+			pc.printf("%.3f || %.3f || %.3f\n", angle[0], angle[1], angle[2]);
 
-      mpu.computeAngle(angle, accOffset, gyroOffset,100);
+			//Aplicar el Filtro Complementario
+		 angle[0] = 0.98 *(angle[0]+gry[0]*0.010) + 0.02*acc[0];
+		 angle[1] = 0.98 *(angle[1]+gry[1]*0.010) + 0.02*acc[1];
 
-        //wait(0.6);
+     //mpu.computeAngle(angle, accOffset, gyroOffset,100);
+		// wait(0.6);
     }
 }
 
