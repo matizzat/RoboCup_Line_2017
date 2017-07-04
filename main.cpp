@@ -2,33 +2,30 @@
 #include "MotorDC.h"
 #include "mcp3208.h"
 #include "color.h"
-#include "hcsr04.h"
 #include <math.h>
 
 //Declaraciones con Librerias
 
 Serial pc(USBTX,USBRX);
-Serial bt(PTC17,PTC16);
-
-HCSR04 ultra(PTC7,PTC5);
-HCSR04 ultra_der(PTC4,PTC12);
-HCSR04 ultra_izq(PTB9,PTA1);
 
 Timer millis;
 
-int distancia_del;
-int distancia_der;
-int distancia_izq;
-
-MotorDC m_izq(PTC10,PTB3,PTB2);
+/*MotorDC m_izq(PTC10,PTB3,PTB2);
 MotorDC m_der(PTC11,PTB10,PTB11);
-DigitalOut stby(PTB20,1);
+DigitalOut stby(PTB20,1);*/
+MotorDC m_izq(PTC4,PTE26,PTC12);
+MotorDC m_der(PTD0,PTC7,PTC3);
+DigitalOut stby(PTC5,1);
 
-ColorSensor c_der(PTB19,PTC1,PTB18);
-ColorSensor c_izq(PTC9,PTC8,PTC0);
+/*ColorSensor c_der(PTB19,PTC1,PTB18);
+ColorSensor c_izq(PTC9,PTC8,PTC0);*/
+ColorSensor c_der(PTB23,PTA1,PTA2);
+ColorSensor c_izq(PTC17,PTB9,PTC16);
 
+/*SPI device(PTD2,PTD3,PTD1);
+MCP3208 mcp(device,PTD0);*/
 SPI device(PTD2,PTD3,PTD1);
-MCP3208 mcp(device,PTD0);
+MCP3208 mcp(device,PTC2);
 
 //Pines led RGB
 
@@ -42,27 +39,23 @@ DigitalOut led_g(LED_GREEN,1);
 
 //tickers
 
-Ticker tm; //muestreo de sensores
 Ticker tu; //valores de motor
-Ticker tmu;//muestreo ultra
-Ticker trgbd;
-Ticker trgbi;
 
 //valores de seguidor
 
-#define N_IZQ 1300
-#define N_DER 1200
+#define N_IZQ 1438
+#define N_DER 1644
 #define N_DEL 600
-#define N_TRAS 490
+#define N_TRAS 370
 #define N_E_IZQ 160
 #define N_E_DER 390
 
 
 
-#define N_INT_IZQ 1380
-#define N_INT_DER 1300//980
-#define N_INT_DEL 700
-#define N_INT_TRAS 640
+#define N_INT_IZQ 750
+#define N_INT_DER 520//980
+#define N_INT_DEL 950
+#define N_INT_TRAS 510
 #define EXT_INT_I 220//230
 #define EXT_INT_D 540
 
@@ -70,12 +63,12 @@ Ticker trgbi;
 #define DEL_INTERSEC_1 700
 #define DEL_INTERSEC_2 600
 
-#define MIN_IZQ 920
-#define MIN_DER 900
+#define MIN_IZQ 700
+#define MIN_DER 500
 #define MIN_TRAS 150
 #define MIN_DEL 150
 
-#define RAZON_RGB_I (dis_i < 0.035f && med_rgb_i.g > med_rgb_i.b)
+#define RAZON_RGB_I (dis_i < 0.019f && med_rgb_i.g > med_rgb_i.b)
 #define RAZON_RGB_D (dis_d < 0.02f && med_rgb_d.g > med_rgb_d.b)
 
 //canales de sensores infrarrojos conectados en SPI
@@ -96,21 +89,19 @@ int s_e_der;
 int s_del;
 int s_tras;
 
-unsigned long tiempo;
-
 //velocidades
 
-#define vel_giro_menor -0.2f
-#define vel_giro_mayor 0.4f
-#define vel_adelante 0.3f
+#define vel_giro_menor -0.6f
+#define vel_giro_mayor 0.85f
+#define vel_adelante 0.8f
 
-#define flanco_de_giro_menor 0.32f
-#define flanco_de_giro_mayor 0.42f
+#define flanco_de_giro_menor 0.2f
+#define flanco_de_giro_mayor 0.1f
 
-#define vel_adelante_intersec 0.3
+#define vel_adelante_intersec 0.7
 
-#define vel_giro_menor_intersec -0.45
-#define vel_giro_mayor_intersec 0.5
+#define vel_giro_menor_intersec -0.70
+#define vel_giro_mayor_intersec 0.8
 
 //varibles para setear velocidad
 
@@ -121,21 +112,13 @@ float veld = 0;
 
 int direccion = -1;
 
-/*#define I_CALR 0.3558f//0.3616f//0.4733f
-#define I_CALG 0.6192f//0.3883f//0.5691f
-#define I_CALB 0.3175f//0.3241f//0.4308f
+#define I_CALR 0.3892f//0.4733f
+#define I_CALG 0.465f//0.5691f
+#define I_CALB 0.365f//0.4308f
 
-#define D_CALR 0.3842f//0.4966f//0.4733f
-#define D_CALG 0.6208f//0.5816f//0.5691f
-#define D_CALB 0.3533f//0.4492f//0.4308f*/
-
-#define I_CALR 0.4225f//0.3616f//0.4733f
-#define I_CALG 0.4958f//0.3883f//0.5691f
-#define I_CALB 0.3633f//0.3241f//0.4308f
-
-#define D_CALR 0.5125f//0.4966f//0.4733f
-#define D_CALG 0.575f//0.5816f//0.5691f
-#define D_CALB 0.4817f//0.4492f//0.4308f
+#define D_CALR 0.4425f//0.4733f
+#define D_CALG 0.4925f//0.5691f
+#define D_CALB 0.3767f//0.4308f
 
 struct vecRGBI{
     float r;
@@ -314,7 +297,7 @@ void interseccion()                                       //en caso de intersecc
       led_g = 0;
       led_r = 0;
         //pegarse la vuelta
-        motores(-0.4,0.4);
+        motores(-0.7,0.7);
         s_tras = mcp.iread_input(canal_s_tras);
         while(s_tras < N_TRAS+10)
         {
@@ -345,117 +328,6 @@ void interseccion()                                       //en caso de intersecc
     millis.reset();
 }
 
-void obstaculo(){
-  tm.detach();
-
-  //int ini = distancia_del;
-  wait_us(500.0f);
-  int esquivar = 0;
-  distancia_der = ultra_der.distance();
-  distancia_izq = ultra_izq.distance();
-  wait_ms(60.0f);
-  if(distancia_der > 28){
-    esquivar = 2;
-  }
-  else{
-    esquivar = 1;
-  }
-  if(esquivar == 1){
-    motores(-0.3,0.3);
-  }
-  else if(esquivar == 2){
-    motores(0.3,-0.3);
-  }
-  wait_ms(100.0f);
-  if(esquivar == 1){
-    motores(-0.3,0.3);
-    while(distancia_der > 7 && distancia_der != 5){
-      distancia_der = ultra_der.distance();
-      wait_ms(60.0f);
-      led_b = 0;
-    }
-    while(1){
-      distancia_der = ultra_der.distance();
-      wait_ms(60.0f);
-      if(distancia_der < 7 && distancia_der != 5){
-        led_b= 0;
-        motores(0.3,0.3);
-      }
-      else{
-        led_b = 0;
-        motores(0.5,-0.1);
-      }
-      s_del = mcp.iread_input(canal_s_del);
-      if(s_del < N_DEL){
-        break;
-      }
-    }
-    led_r=0;
-    led_g=0;
-    motores(0.4,0.4);
-    s_del = mcp.iread_input(canal_s_del);
-    while(s_del < N_DEL){
-      s_del = mcp.iread_input(canal_s_del);
-    }
-    s_der = mcp.iread_input(canal_s_der);
-    while(s_der < N_DER+10){
-      s_der = mcp.iread_input(canal_s_der);
-    }
-    motores(-0.3,0.3);
-    s_der = mcp.iread_input(canal_s_der);
-    while(s_der > N_DER-10){
-      s_der = mcp.iread_input(canal_s_der);
-    }
-  }
-  else if(esquivar == 2){
-    motores(0.3,-0.3);
-    while(distancia_izq > 7 && distancia_izq != 5){
-      distancia_izq = ultra_izq.distance();
-      wait_ms(60.0f);
-      led_b = 0;
-    }
-    while(1){
-      distancia_izq = ultra_izq.distance();
-      wait_ms(60.0f);
-      led_b = 0;
-      if(distancia_izq < 7 && distancia_izq != 5){
-        led_b= 0;
-        motores(0.3,0.3);
-      }
-      else{
-        led_b = 0;
-        motores(0,0.5);
-      }
-      s_del = mcp.iread_input(canal_s_del);
-      if(s_del < N_DEL){
-        break;
-      }
-    }
-    led_r=0;
-    led_g=0;
-    motores(0.4,0.4);
-    s_del = mcp.iread_input(canal_s_del);
-    while(s_del < N_DEL){
-      s_del = mcp.iread_input(canal_s_del);
-    }
-    s_izq = mcp.iread_input(canal_s_izq);
-    while(s_izq < N_IZQ+10){
-      s_izq = mcp.iread_input(canal_s_izq);
-    }
-    motores(0.3,-0.3);
-    s_izq = mcp.iread_input(canal_s_izq);
-    while(s_izq > N_IZQ-10){
-      s_izq = mcp.iread_input(canal_s_izq);
-    }
-  }
-  motores(0,0);
-  distancia_del = 15;
-  led_b = 1;
-  led_r=1;
-  led_g=1;
-  wait(0.5f);
-}
-
 //***************************************************************************************************************************
 
 int main(){
@@ -469,17 +341,11 @@ int main(){
 
   tu.attach_us(&updateMotors,100.0f);
   //pc.baud(115200);
-  bt.baud(9600);
-  distancia_del = ultra.distance();
   wait(0.5f);
   millis.start();
-  tiempo = 0;
-  distancia_del = 15;
+  unsigned long tiempo = 0;
 
   while(true){
-
-    distancia_del = ultra.distance();
-    wait_ms(30);
     s_izq = mcp.iread_input(canal_s_izq);
     s_der = mcp.iread_input(canal_s_der);
     s_e_izq = mcp.iread_input(canal_s_e_izq);
@@ -490,39 +356,22 @@ int main(){
 
     lec_rgbi();
     lec_rgbd();
-    //c.printf("%d\n",distancia_del);
-
-    /*pc.printf("%d\t||\tR:\t%f\tG:\t%f\tB:\t%f\t||\t%f\n",s_del,med_rgb_i.r, med_rgb_i.g, med_rgb_i.b,dis_i);
-    pc.printf("%d\t||\tR:\t%f\tG:\t%f\tB:\t%f\t||\t%f\n",s_del,med_rgb_d.r, med_rgb_d.g, med_rgb_d.b,dis_d);
-    led_b = 0;
-    led_g = !(dis_i < 0.008f && med_rgb_i.g > med_rgb_i.b);
-    led_r = !(dis_d < 0.006f && med_rgb_d.g > med_rgb_d.b);*/
-
     /*pc.printf("IZQ=\tR:\t%.4f\tG:\t%.4f\tB:\t%.4f\t\t", med_rgb_i.r, med_rgb_i.g, med_rgb_i.b);
-    pc.printf("------------dis:\t%f\n", dis_i);
+    pc.printf("------------dis:\t%f\n", dis_i);*/
 
-		pc.printf("DER=\tR:\t%.4f\tG:\t%.4f\tB:\t%.4f\t\t", med_rgb_d.r, med_rgb_d.g, med_rgb_d.b);
-    pc.printf("------------dis:\t%f\n", dis_d);
-    led_g = !RAZON_RGB_I;
-    led_r = !RAZON_RGB_D;*/
-
+    /*pc.printf("DER=\tR:\t%.4f\tG:\t%.4f\tB:\t%.4f\t\t", med_rgb_d.r, med_rgb_d.g, med_rgb_d.b);
+    pc.printf("------------dis:\t%f\n", dis_d);*/
 
     if((((s_izq < N_INT_IZQ && s_der < N_INT_DER && s_tras < N_INT_TRAS && s_del < N_INT_DEL) ||
     (s_izq < N_INT_IZQ && s_del < N_INT_DEL && s_tras < N_INT_TRAS) ||
     (s_der < N_INT_DER && s_del < N_INT_DEL && s_tras < N_INT_TRAS)) &&
-    (s_e_der < 950 || s_e_izq < 650)) ||
+    (s_e_der < 500 || s_e_izq < 450)) ||
     ((RAZON_RGB_I || RAZON_RGB_D) && tiempo > 400)) {
       led_g = !RAZON_RGB_I;
       led_r = !RAZON_RGB_D;
       motores(-0.01,-0.01);
       wait(0.1f);
       interseccion();
-    }
-    else if(distancia_del < 7 && distancia_del > 0 && distancia_del !=5 && distancia_del !=4){
-      led_b = 0;
-      bt.printf("%d\n",distancia_del);
-      //pc.printf("DISTANCIA_DEL:\t%d\n", distancia_del);
-      obstaculo();
     }
     else if(s_izq < N_IZQ) {
       motores(vel_giro_menor-(flanco_de_giro_menor*(s_izq < MIN_IZQ)),vel_giro_mayor+(flanco_de_giro_mayor*(s_izq < MIN_IZQ)));
@@ -531,6 +380,5 @@ int main(){
     } else {
       motores(vel_adelante,vel_adelante);
     }
-    //wait(0.2f);
   }
 }
