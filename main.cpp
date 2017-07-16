@@ -64,7 +64,7 @@ float veld_ant = 0;
 float veli_ant = 0;
 int pulsos_izq = 0;
 bool n = false;
-#define motores(a,b) veli = a; veld = b
+//#define motores(a,b) veli = a; veld = b
 
 ////////////
 //TICKERS //
@@ -97,8 +97,8 @@ Ticker tm;
 #define MIN_TRAS 150
 #define MIN_DEL 150
 
-#define RAZON_RGB_I (med_rgb_i.r-rgb_promi < 0 && med_rgb_i.b-rgb_promi < 0 && med_rgb_i.g-rgb_promi>0.02f && rgb_promi < 0.7f && dis_i < 0.04f)
-#define RAZON_RGB_D (med_rgb_d.r+med_rgb_d.b-2*rgb_prom < 0 && med_rgb_d.g-rgb_prom>0.02f && rgb_prom < 0.75f && dis_d < 0.04f)
+#define RAZON_RGB_I (med_rgb_i.r-rgb_promi < 0 && med_rgb_i.b-rgb_promi < 0 && med_rgb_i.g-rgb_promi>0.02f && rgb_promi < 0.7f)
+#define RAZON_RGB_D (med_rgb_d.r+med_rgb_d.b-2*rgb_prom < 0 && med_rgb_d.g-rgb_prom>0.02f && rgb_prom < 0.75f && med_rgb_d.b < rgb_prom)
 
 ///////////////////////////
 //        ESTADOS        //
@@ -231,15 +231,20 @@ void lec_rgbd(){
 /////////////////////////////////////////////////
 //ACTUALIZACION DE LA VELOCIDAD DE LOS MOTORES //
 /////////////////////////////////////////////////
-void updateMotors(){                                      //seteador de velocidades de motores con Ticker TU
-  if(veld != veld_ant){
-    m_der = veld;
-    veld_ant = veld;
+//void updateMotors(){                                      //seteador de velocidades de motores con Ticker TU
+void motores(float a, float b){
+  bool cambio = false;
+  if(b != veld_ant){
+    m_der = b;
+    veld_ant = b;
+    cambio = true;
   }
-  if(veli != veli_ant){
-    m_izq = veli;
-    veli_ant = veli;
+  if(a != veli_ant){
+    m_izq = a;
+    veli_ant = a;
+    cambio = true;
   }
+  if(cambio) wait_us(100);
 }
 
 ///////////////////////////
@@ -287,22 +292,41 @@ void muestreo_mpu(){
   mpu.getGyro(gry);
   mpu.getAcceleroAngle(angle);
   angle[0] = 0.98 *(angle[0]+gry[0]*0.010) + 0.02*acc[0];
+  pc.printf("angle[0] --> %.3f\n",angle[0]);
 }
 
 void impresion(){
-  //pc.printf("%d\t||\t%d\t||\t%d\t||\t%d\t---\t%d\t||\t%d\n", s_e_izq, s_izq, s_der, s_e_der,s_del,s_tras);
-  float g = med_rgb_d.g, b = med_rgb_d.b, r = med_rgb_d.r;
-  float prom = (g+r+b)/3;
-  //float gi = med_rgb_i.g, bi =med_rgb_i.b, ri = med_rgb_i.r, promi=(gi+bi+ri)/3;
-  bool RGBD = (r+b-2*prom < 0 && g-prom>0.02f && prom < 0.75f);
-  //bool RGBI = (ri-promi<0 && bi-promi < 0 && gi-promi>0.02f && promi < 0.7f);
-  /*if(!RGBD){
-    pc.printf("IZQ=\tR:\t%.4f\tG:\t%.4f\tB:\t%.4f\t\t", r, g, b);
-    pc.printf("------------dis:\t%f\n", dis_i);
-    pc.printf("PROM = %.4f\t RP = %.4f\t GP = %.4f\t BP = %.4f\n",prom,r-prom,g-prom,b-prom);
-  }*///pc.printf("DER=\tR:\t%.4f\tG:\t%.4f\tB:\t%.4f\t\t", med_rgb_d.r, med_rgb_d.g, med_rgb_d.b);
-  //pc.printf("------------dis:\t%f\n", dis_d);
-  led_g = !RGBD;
+  //#define RAZON_RGB_I (med_rgb_i.r-rgb_promi < 0 && med_rgb_i.b-rgb_promi < 0 && med_rgb_i.g-rgb_promi>0.02f && rgb_promi < 0.7f && dis_i < 0.04f)
+  //#define RAZON_RGB_D (med_rgb_d.r+med_rgb_d.b-2*rgb_prom < 0 && med_rgb_d.g-rgb_prom>0.02f && rgb_prom < 0.75f && dis_d < 0.04f)
+  motores(0,0);
+  int i = 0;
+  while(i < 5){
+    //pc.printf("%d\t||\t%d\t||\t%d\t||\t%d\t---\t%d\t||\t%d\n", s_e_izq, s_izq, s_der, s_e_der,s_del,s_tras);
+    lec_rgbi();
+    lec_rgbd();
+    float g = med_rgb_i.g, b = med_rgb_i.b, r = med_rgb_i.r;
+    //float g = med_rgb_i.g, b = med_rgb_i.b, r = med_rgb_i.r
+    float prom = (g+r+b)/3;
+    //float gi = med_rgb_i.g, bi =med_rgb_i.b, ri = med_rgb_i.r, promi=(gi+bi+ri)/3;
+    //bool RGB = (r+b-2*prom < 0 && g-prom>0.02f && prom < 0.75f && b < prom); //Para RGB DER
+    bool RGB = r < prom && b < prom && g -prom > 0.02f && prom < 0.7f;
+    char rc = ' ', bc = ' ', gc = ' ', promc = ' ', dis_c= ' ';
+    //bool RGBI = (ri-promi<0 && bi-promi < 0 && gi-promi>0.02f && promi < 0.7f);
+    if(r < prom) rc = 'X';
+    if(b < prom) bc = 'X';
+    if(g - prom > 0.02f) gc = 'X';
+    if(prom < 0.7f) promc = 'X';
+    if(dis_d < 0.04f) dis_c = 'X';
+    //if(RGB){
+      //pc.printf("DER=\tR:\t%.4f\tG:\t%.4f\tB:\t%.4f\t\t", r, g, b);
+      //pc.printf("------------dis:\t%f%c\n", dis_d,dis_c);
+      pc.printf("PROM = %.4f%c\t RP = %.4f%c\t GP = %.4f%c\t BP = %.4f%c\n",prom,promc,r-prom,rc,g-prom,gc,b-prom,bc);
+    //}//pc.printf("DER=\tR:\t%.4f\tG:\t%.4f\tB:\t%.4f\t\t", med_rgb_d.r, med_rgb_d.g, med_rgb_d.b);
+    //pc.printf("------------dis:\t%f\n", dis_d);
+    led_g = !RGB;
+    //i++;
+  }
+  while(true);
 }
 
 ///////////////////////////////////////////////////////////////////////      /////////
@@ -344,17 +368,19 @@ void interseccion()                                       //en caso de intersecc
   motores(0.0,0.0);
   wait_ms(100);
   enc_izq.reset();
-
+  pc.printf("dir = %d\t cant pulsos = %d\n",direccion,enc_izq.getPulses());
+  pulsos_izq = enc_izq.getPulses();
   if(direccion == 0) {                                          //seguir derecho
+    pc.printf("dir == 0");
     led_g = 0;
     motores(vel_adelante_intersec,vel_adelante_intersec);
     wait_ms(10.0f);
     pulsos_izq = enc_izq.getPulses();
     while(pulsos_izq < 110){
-      lec_rgbd();
-      lec_rgbi();
+      //lec_rgbd();
+      //lec_rgbi();
       pulsos_izq = enc_izq.getPulses();
-      if(RAZON_RGB_I && RAZON_RGB_D){
+      /*if(RAZON_RGB_I && RAZON_RGB_D){
         motores(0.0,0.0);
         direccion = 3;
         break;
@@ -368,10 +394,11 @@ void interseccion()                                       //en caso de intersecc
         motores(0.0,0.0);
         direccion = 2;
         break;
-      }
+      }*/
     }
   }
-  if(direccion == 1) {                                //interseccion hacia la izquierdo
+  if(pulsos_izq < 110 && direccion == 1) {                                //interseccion hacia la izquierdo
+    pc.printf("dir == 1");
     led_b = 0;
     led_r = 0;
     motores(vel_adelante_intersec,vel_adelante_intersec);
@@ -386,20 +413,30 @@ void interseccion()                                       //en caso de intersecc
       pulsos_izq = enc_izq.getPulses();
       led_r = 1;
     }
+    pc.printf("Termina pulsos. new_dir = %d",direccion);
     if(direccion == 1){
-      motores(vel_giro_menor_intersec,vel_giro_mayor_intersec+0.1);
+    pc.printf("inside\n");
+      motores(vel_giro_menor_intersec,vel_giro_mayor_intersec);
+      s_e_izq = mcp.iread_input(canal_s_e_izq);
+      pc.printf("s_e_izq --> %d\n", s_e_izq);
+      while(s_e_izq > 900){
+         s_e_izq = mcp.iread_input(canal_s_e_izq);
+      }
       s_del = mcp.iread_input(canal_s_del);
       while(s_del < DEL_INTERSEC_1){
         s_del = mcp.iread_input(canal_s_del);
         led_r = 1;
       }
+      pc.printf("\n");
       while(s_del > DEL_INTERSEC_2){
         s_del = mcp.iread_input(canal_s_del);
         led_r = 1;
       }
+      pc.printf("\nTermina");
     }
   }
-  if(direccion == 2) {                                    //interseccion hacia la derecha
+  if(pulsos_izq < 110 && direccion == 2) {                                    //interseccion hacia la derecha
+    pc.printf("dir == 2");
     led_b = 0;
     led_g = 0;
     motores(vel_adelante_intersec+0.1,vel_adelante_intersec);
@@ -429,6 +466,7 @@ void interseccion()                                       //en caso de intersecc
     }
   }
   if(direccion == 3) {                                     //pegarse la vuelta
+    pc.printf("dir == 3");
     led_g = 0;
     led_r = 0;
     enc_izq.reset();
@@ -538,12 +576,12 @@ int main(){
   led_g = 1;
   pala.setLimits(500,2400);
   pala.enable(-55);                        //LLEVAR LA PALA HACIA ARRIBA
-  tu.attach_us(&updateMotors,60.0f);   //ATTACH DE TICKERS
+  //tu.attach_us(&updateMotors,60.0f);   //ATTACH DE TICKERS
   angle[0] = -87.0f;
   //muestreo_mpu();
   pc.baud(115200);
   distancia_sup = u_del_sup.distance();
-  wait(3.0f);
+  //wait(3.0f);
   pala.disable();
   millis.start();
   //  mpu.setAlpha(0);
@@ -554,6 +592,7 @@ int main(){
   pc.printf("Imprimiendo. Ok!!");
   wait(2);
   while(true){
+    //impresion();
     //////////////////////
     //SEGUIDOR DE LINEA //
     //////////////////////
@@ -568,10 +607,14 @@ int main(){
     lec_rgbi();
     lec_rgbd();
     distancia_sup = u_del_sup.distance();
-    //pc.printf("\t\t\t   del = %d\n\nizq_e = %d\tizq = %d\t\tder = %d\tder_e = %d\n\n\t\t\t   tra = %d\n",s_del,s_e_izq,s_izq,s_der,s_e_der,s_tras);
-    if(((s_izq < N_INT_IZQ && s_del < N_INT_DEL && s_tras < N_INT_TRAS) ||
-    (s_der < N_INT_DER && s_del < N_INT_DEL && s_tras < N_INT_TRAS)) &&
-    (s_e_der < 950 || s_e_izq < 1050)){
+
+    /*float g = med_rgb_d.g, b = med_rgb_d.b, r = med_rgb_d.r;
+    //float g = med_rgb_i.g, b = med_rgb_i.b, r = med_rgb_i.r
+    float prom = (g+r+b)/3;
+    //float gi = med_rgb_i.g, bi =med_rgb_i.b, ri = med_rgb_i.r, promi=(gi+bi+ri)/3;
+    bool RGB = (r+b-2*prom < 0 && g-prom>0.02f && prom < 0.75f);
+    led_g = !RGB;
+
     char del=' ',izq_e=' ',izq=' ',der=' ',der_e=' ',tra=' ';
     if(s_izq < N_INT_IZQ) izq = 'X';
     if(s_del < N_INT_DEL) del = 'X';
@@ -580,7 +623,7 @@ int main(){
     if(s_e_der < 950) der_e='X';
     if(s_e_izq < 1050) izq_e ='X';
     pc.printf("\t\t\t   del = %d%c\n\nizq_e = %d%c\tizq = %d%c\t\tder = %d%c\tder_e = %d%c\n\n\t\t\t   tra = %d%c\n",s_del,del,s_e_izq,izq_e,s_izq,izq,s_der,der,s_e_der,der_e,s_tras,tra);
-}
+*/
     //if(lec_mpu.read_ms() > 40){
       muestreo_mpu();
       //lec_mpu.reset();
@@ -592,6 +635,7 @@ int main(){
       min_der = s_der;
       pc.printf("min_der --> %d\n", min_der);
     }*/
+    //estado = 100;
     if(estado == seguidor){
 
       /*led_g = 0;
@@ -634,7 +678,7 @@ int main(){
         pc.printf("estado = rampa_up\n" );
       }
       else if(en_rampa == true && (fabs(angle[0]) < 76.0f && angle[0] > 0) && (fabs(angle_ant) < 76.0f && angle_ant > 0)){
-        motores(0.4,0.4);
+        motores(0.35,0.35);
         estado = seguidor_rampa_down;
         pc.printf("estado = rampa_down\n" );
       }
@@ -643,35 +687,130 @@ int main(){
         motores(0,0);
         obstaculo();
       }*/
-      else if (((((s_izq < N_INT_IZQ && s_del < N_INT_DEL && s_tras < N_INT_TRAS) ||
-      (s_der < N_INT_DER && s_del < N_INT_DEL && s_tras < N_INT_TRAS)) &&
-      (s_e_der < 950 || s_e_izq < 1050)) ||
-      ((RAZON_RGB_I || RAZON_RGB_D) && tiempo > 500)) && ((fabs(angle[0]) > 80.0f && angle[0] > 0) || (fabs(angle[0]) > 85.5f && angle[0] < 0)))
+
+
+      //N_INT_TRAS N_INT_DEL
+      else if ((((s_del < 900  && s_tras < 1000 ) && (s_e_der < 1200 || s_e_izq < 1300))
+      || ((RAZON_RGB_I || RAZON_RGB_D) && tiempo > 500))) //&& (((fabs(angle[0]) > 84.0f && angle[0] > 0) && (fabs(angle_ant) > 84.0f && angle_ant > 0)) || (fabs(angle[0]) > 85.5f && angle[0] < 0 && (fabs(angle_ant) > 80.0f && angle_ant > 0))))
       {
         pc.printf("interseccion\n");
+        pc.printf("interseccion angle[0] --> %.3f\t%.3f\n",angle[0],angle_ant);
         //impresion();
-        char del=' ',izq_e=' ',izq=' ',der=' ',der_e=' ',tra=' ';
-        if(s_izq < N_INT_IZQ) izq = 'X';
-        if(s_del < N_INT_DEL) del = 'X';
-        if(s_tras < N_INT_TRAS) tra = 'X';
-        if(s_der < N_INT_DER) der = 'X';
-        if(s_e_der < 950) der_e='X';
-        if(s_e_izq < 1050) izq_e ='X';
-        pc.printf("\t\t\t   del = %d%c\n\nizq_e = %d%c\tizq = %d%c\t\tder = %d%c\tder_e = %d%c\n\n\t\t\t   tra = %d%c\n",s_del,del,s_e_izq,izq_e,s_izq,izq,s_der,der,s_e_der,der_e,s_tras,tra);
-        motores(-0.01,-0.01);
-        interseccion();
+        //motores(-0.01,-0.01);
+        bool side_inter = false;//izquierda
+        if(s_e_der < 1200){
+          side_inter = true;//derecha
+        }
+        bool is_inter = true;
+        if(!((RAZON_RGB_I || RAZON_RGB_D) && tiempo > 500)){
+          enc_izq.reset();
+          motores(0.55f,0.55f);
+          int enc = enc_izq.getPulses();
+          while(enc<= 75){
+
+            lec_rgbi();
+            lec_rgbd();
+            distancia_sup = u_del_sup.distance();
+
+            /*float g = med_rgb_i.g, b = med_rgb_i.b, r = med_rgb_i.r;
+            //float g = med_rgb_i.g, b = med_rgb_i.b, r = med_rgb_i.r
+            float prom = (g+r+b)/3;
+            //float gi = med_rgb_i.g, bi =med_rgb_i.b, ri = med_rgb_i.r, promi=(gi+bi+ri)/3;
+            bool RGBD = (r<prom && g-prom>0.02f && prom < 0.7f && b < prom);
+            led_r = !RGBD;*/
+            if(RAZON_RGB_I){
+              pc.printf("RGBI\n");
+              break;
+            }
+              if(RAZON_RGB_D){
+              pc.printf("RGBD\n");
+              break;
+            }
+            s_e_izq = mcp.iread_input(canal_s_e_izq);
+            s_e_der = mcp.iread_input(canal_s_e_der);
+            s_del = mcp.iread_input(canal_s_del);
+            enc = enc_izq.getPulses();
+            if(enc%10 < 2){
+              pc.printf("enc --> %d\ts_e_izq --> %d\ts_e_der --> %d\ts_del --> %d\n",enc,s_e_izq,s_e_der,s_del);
+              if(s_del > 1300){
+                is_inter = false;
+                break;
+              }
+            }
+          }
+        }
+
+        if(is_inter){
+          pc.printf("Es interseccion\n");
+          motores(0,0);
+          //while(1);
+          pc.printf("RGBI --> %d\tRGBD --> %d\n",RAZON_RGB_I,RAZON_RGB_D);
+          interseccion();
+        }
+        else{
+          pc.printf("No es interseccion\n");
+          if(side_inter){
+            s_der = mcp.iread_input(canal_s_der);
+            motores(0.6f,-0.6f);
+            while(s_der > 1150){
+              s_der = mcp.iread_input(canal_s_der);
+            }
+          }
+          else{
+            s_izq = mcp.iread_input(canal_s_izq);
+            motores(-0.6f,0.6f);
+            while(s_izq > 1150){
+              s_izq = mcp.iread_input(canal_s_izq);
+            }
+          }
+        }
       }
       //else if()
-      else if(s_der < 950) {
-        motores(0.8f,-0.6f-(0.3f*(s_der < 400)));
-        /*if(s_der < 400){
-          pc.printf("muy negro der\n" );
-        }*/
+      else if(s_der < 1150) {
+        if(s_e_der < 1200){
+          //Pasar curva de 90
+          enc_izq.reset();
+          int enc = enc_izq.getPulses();
+          motores(0.55f,0.55f);
+          while(enc < 100){
+            enc = enc_izq.getPulses();
+          }
+          s_der = mcp.iread_input(canal_s_der);
+          motores(0.6f,-0.6f);
+          while(s_der > 1150){
+            s_der = mcp.iread_input(canal_s_der);
+          }
+        }
+        else if(s_der < 800){
+          motores(0.8f,-1);
+        }
+        else{
+          motores(0.7f,-0.5f);
+        }
       }
-      else if(s_izq < 950) {
-        motores(-0.6f-(0.3f*(s_izq < 480)),0.8f);
-        //if(s_izq < 480)
-        //pc.printf("muy negro izquierdo\n" );
+      else if(s_izq < 1150) {
+        if(s_e_izq < 1200){
+          //Pasar curva de 90
+          enc_izq.reset();
+          int enc = enc_izq.getPulses();
+          pc.printf("enc --> %d\n", enc);
+          motores(0.55f,0.55f);
+          while(enc < 100){
+            enc = enc_izq.getPulses();
+          }
+          pc.printf("enc --> %d\n", enc);
+          s_izq = mcp.iread_input(canal_s_izq);
+          motores(-0.6f,0.6f);
+          while(s_izq > 1150){
+            s_izq = mcp.iread_input(canal_s_izq);
+          }
+        }
+        else if(s_izq < 600){
+          motores(-1,0.8f);
+        }
+        else{
+          motores(-0.5f,0.7f);
+        }
       }
       else {
         motores(0.55f,0.55f);
@@ -684,7 +823,7 @@ int main(){
 
     else if(estado == seguidor_rampa_up){
 
-      if(fabs(angle[0]) > 83.5f && fabs(angle_ant) > 84.0f){
+     if(fabs(angle[0]) > 83.5f && fabs(angle_ant) > 84.0f){
         motores(0.0,0.0);
         a_la_rampa = false;
         en_rampa = true;
@@ -694,22 +833,22 @@ int main(){
         estado = seguidor;
       }
       else if(s_izq < N_IZQ && s_der > N_DER) {
-        motores(0.5,0.9);
+        motores(0.55,0.9);
       }
       else if(s_der < N_DER && s_izq > N_IZQ) {
-        motores(0.9,0.5);
+        motores(0.9,0.55);
       }
       else {
-        motores(0.8,0.8);
+        motores(0.95,0.95);
       }
-      if(fabs(angle[0]) < 58.0f && angle[0] < 0 && n == true){
+    /*  if(fabs(angle[0]) < 58.0f && angle[0] < 0 && n == true){
         pala.write(68);
         n = false;
       }
       else if(n == false && fabs(angle[0]) > 58.0f && angle[0] < 0){
         pala.write(55);
         n = true;
-      }
+      }*/
     }
 
     //////////////////////////////
