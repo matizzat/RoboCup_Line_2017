@@ -13,7 +13,7 @@ HCSR04 ultra(PTC7,PTC5);       // ultrasonido del frente
 HCSR04 ultra_der(PTC4,PTC12);  // ultrasonido del costado derecho
 HCSR04 ultra_izq(PTB9,PTA1);   // ultrasonido del costado izquierdo
 
-//M: Declaracion del objeto que permite medir
+//M: Declaracion del objeto que permite medir el
 //tiempo paso desde que empezo a correr el programa:
 Timer millis;
 
@@ -29,25 +29,27 @@ MotorDC m_der(PTC11,PTB10,PTB11);
 //M: ?
 DigitalOut stby(PTB20,1);
 
-//M: Declaracion de los sesnroes de color derecho e izquierdo:
+//M: Declaracion de los sensores de color derecho e izquierdo:
 ColorSensor c_der(PTB19,PTC1,PTB18);
 ColorSensor c_izq(PTC9,PTC8,PTC0);
 
+//M: Declaracion de objetos para poder comunicarse con
+//el microchip mcp:
 SPI device(PTD2,PTD3,PTD1);
 MCP3208 mcp(device,PTD0);
 
-//Pines led RGB
-
+//M: Declaracion de leds RGB:
 DigitalOut led_b(LED_BLUE,1);
 DigitalOut led_r(LED_RED,1);
 DigitalOut led_g(LED_GREEN,1);
 
 //Manejo de Motores
-
+//M: ?
 #define motores(a,b) veli = a; veld = b
 
-//tickers
-
+//M: Tickers:
+//M: Los tickers permiten interrumpir el programa y 
+//llamar a una funcion en un determinado intervalo de tiempo
 Ticker tm; //muestreo de sensores
 Ticker tu; //valores de motor
 Ticker tmu;//muestreo ultra
@@ -55,45 +57,34 @@ Ticker trgbd;
 Ticker trgbi;
 
 //valores de seguidor
-
 #define N_IZQ 1300
 #define N_DER 1200
 #define N_DEL 600
 #define N_TRAS 490
 #define N_E_IZQ 160
 #define N_E_DER 390
-
-
-
 #define N_INT_IZQ 1380
 #define N_INT_DER 1300//980
 #define N_INT_DEL 700
 #define N_INT_TRAS 640
 #define EXT_INT_I 220//230
 #define EXT_INT_D 540
-
-
 #define DEL_INTERSEC_1 700
 #define DEL_INTERSEC_2 600
-
 #define MIN_IZQ 920
 #define MIN_DER 900
 #define MIN_TRAS 150
 #define MIN_DEL 150
-
 #define RAZON_RGB_I (dis_i < 0.02f && med_rgb_i.g > med_rgb_i.b)
 #define RAZON_RGB_D (dis_d < 0.02f && med_rgb_d.g > med_rgb_d.b)
 
 //canales de sensores infrarrojos conectados en SPI
-
 #define canal_s_izq  1
 #define canal_s_der  3
 #define canal_s_e_izq   0
 #define canal_s_e_der   4
 #define canal_s_del     2
 #define canal_s_tras    5
-
-//variables globales
 
 int s_izq;
 int s_der;
@@ -104,24 +95,19 @@ int s_tras;
 
 unsigned long tiempo;
 
-//velocidades
-
+//M: velocidades
 #define vel_giro_menor -0.2f
 #define vel_giro_mayor 0.4f
 #define vel_adelante 0.3f
-
 #define flanco_de_giro_menor 0.32f
 #define flanco_de_giro_mayor 0.42f
-
 #define vel_adelante_intersec 0.3
-
 #define vel_giro_menor_intersec -0.45
 #define vel_giro_mayor_intersec 0.5
 
-//varibles para setear velocidad
-
-float veli = 0;
-float veld = 0;
+//variables para setear velocidad:
+float veli = 0; //M: velocidad izquierda
+float veld = 0; //M: velocidad derecha
 
 //direccion de interseccion inicial
 
