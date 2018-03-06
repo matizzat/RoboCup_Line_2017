@@ -5,24 +5,31 @@
 #include "hcsr04.h"
 #include <math.h>
 
-//Declaraciones con Librerias
-
+//M: Declaracion para comunicarse con el monitor serial:
 Serial pc(USBTX,USBRX);
 
-HCSR04 ultra(PTC7,PTC5);
-HCSR04 ultra_der(PTC4,PTC12);
-HCSR04 ultra_izq(PTB9,PTA1);
+//M: Declaracion de los sensores ultrasonidos:
+HCSR04 ultra(PTC7,PTC5);       // ultrasonido del frente 
+HCSR04 ultra_der(PTC4,PTC12);  // ultrasonido del costado derecho
+HCSR04 ultra_izq(PTB9,PTA1);   // ultrasonido del costado izquierdo
 
+//M: Declaracion del objeto que permite medir
+//tiempo paso desde que empezo a correr el programa:
 Timer millis;
 
-int distancia_del;
-int distancia_der;
-int distancia_izq;
+//M: Valores recogidos por las lecturas de los sensores:
+int distancia_del; // de ultra
+int distancia_der; // de ultra_der
+int distancia_izq; // de ultra_izq
 
+//M: Declaracion de los motores de las ruedas del robot:
 MotorDC m_izq(PTC10,PTB3,PTB2);
 MotorDC m_der(PTC11,PTB10,PTB11);
+
+//M: ?
 DigitalOut stby(PTB20,1);
 
+//M: Declaracion de los sesnroes de color derecho e izquierdo:
 ColorSensor c_der(PTB19,PTC1,PTB18);
 ColorSensor c_izq(PTC9,PTC8,PTC0);
 
@@ -120,21 +127,13 @@ float veld = 0;
 
 int direccion = -1;
 
-/*#define I_CALR 0.3558f//0.3616f//0.4733f
-#define I_CALG 0.6192f//0.3883f//0.5691f
-#define I_CALB 0.3175f//0.3241f//0.4308f
+#define I_CALR 0.4225f
+#define I_CALG 0.4958f
+#define I_CALB 0.3633f
 
-#define D_CALR 0.3842f//0.4966f//0.4733f
-#define D_CALG 0.6208f//0.5816f//0.5691f
-#define D_CALB 0.3533f//0.4492f//0.4308f*/
-
-#define I_CALR 0.4225f//0.3616f//0.4733f
-#define I_CALG 0.4958f//0.3883f//0.5691f
-#define I_CALB 0.3633f//0.3241f//0.4308f
-
-#define D_CALR 0.5125f//0.4966f//0.4733f
-#define D_CALG 0.575f//0.5816f//0.5691f
-#define D_CALB 0.4817f//0.4492f//0.4308f
+#define D_CALR 0.5125f
+#define D_CALG 0.575f
+#define D_CALB 0.4817f
 
 struct vecRGBI{
     float r;
@@ -481,23 +480,7 @@ int main(){
 
     lec_rgbi();
     lec_rgbd();
-    //c.printf("%d\n",distancia_del);
-
-    /*pc.printf("%d\t||\tR:\t%f\tG:\t%f\tB:\t%f\t||\t%f\n",s_del,med_rgb_i.r, med_rgb_i.g, med_rgb_i.b,dis_i);
-    pc.printf("%d\t||\tR:\t%f\tG:\t%f\tB:\t%f\t||\t%f\n",s_del,med_rgb_d.r, med_rgb_d.g, med_rgb_d.b,dis_d);
-    led_b = 0;
-    led_g = !(dis_i < 0.008f && med_rgb_i.g > med_rgb_i.b);
-    led_r = !(dis_d < 0.006f && med_rgb_d.g > med_rgb_d.b);*/
-
-    /*pc.printf("IZQ=\tR:\t%.4f\tG:\t%.4f\tB:\t%.4f\t\t", med_rgb_i.r, med_rgb_i.g, med_rgb_i.b);
-    pc.printf("------------dis:\t%f\n", dis_i);
-
-		pc.printf("DER=\tR:\t%.4f\tG:\t%.4f\tB:\t%.4f\t\t", med_rgb_d.r, med_rgb_d.g, med_rgb_d.b);
-    pc.printf("------------dis:\t%f\n", dis_d);
-    led_g = !RAZON_RGB_I;
-    led_r = !RAZON_RGB_D;*/
-
-
+ 
     if((((s_izq < N_INT_IZQ && s_der < N_INT_DER && s_tras < N_INT_TRAS && s_del < N_INT_DEL) ||
     (s_izq < N_INT_IZQ && s_del < N_INT_DEL && s_tras < N_INT_TRAS) ||
     (s_der < N_INT_DER && s_del < N_INT_DEL && s_tras < N_INT_TRAS)) &&
@@ -511,7 +494,6 @@ int main(){
     }
     else if(distancia_del < 6 && distancia_del > 0 && distancia_del !=5){
       led_b = 0;
-      //pc.printf("DISTANCIA_DEL:\t%d\n", distancia_del);
       obstaculo();
       tm.attach(&muestreo_del,0.02f);
     }
